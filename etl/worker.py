@@ -37,6 +37,12 @@ class Worker:
         for task in self.job.task_set.filter(active=True):
             s_cursor = source_connection.cursor()
             t_cursor = target_connection.cursor()
+            # truncate target if required
+            if task.truncate_on_load:
+                tr_cursor = target_connection.cursor()
+                tr_cursor.execute("truncate table {}".format(task.destination_table))
+                tr_cursor.close()
+
             # while there are chunks left
             s_cursor.execute(task.extract_query)
             # select next chunk to memory
