@@ -14,6 +14,8 @@ class Job(models.Model):
     name = models.CharField(max_length=200, unique=True, verbose_name=ugettext_lazy("Name"))
     source = models.ForeignKey(Database, verbose_name=ugettext_lazy("Source"))
     destination = models.ForeignKey(Database, verbose_name=ugettext_lazy("Destination"))
+    active = models.BooleanField(default=True, verbose_name=ugettext_lazy("Active"))
+    source_batch_sql = models.CharField(max_length=4000, unique=True, verbose_name=ugettext_lazy("Source Batch SQL"))
 
 
 class Task(models.Model):
@@ -24,14 +26,18 @@ class Task(models.Model):
     chunk_size = models.IntegerField(verbose_name=ugettext_lazy("Chunk Size"))
     source_batch_column = models.CharField(max_length=200, verbose_name=ugettext_lazy("Source Batch Column"))
     destination_batch_column = models.CharField(max_length=200, verbose_name=ugettext_lazy("Destination Batch Column"))
+    active = models.BooleanField(default=True, verbose_name=ugettext_lazy("Active"))
+    truncate_on_load = models.BooleanField(default=True, verbose_name=ugettext_lazy("Active"))
 
     @property
     def extract_query(self):
-        return "select {} from {}".format(", ".join(self.fieldmapping_set.all()), self.source_table)
+        fields = ", ".join(self.fieldmapping_set.all().order_by("id").values_list("source_field", flat=True))
+        return "select {} from {}".format(fields, self.source_table)
 
     @property
     def load_query(self):
-        return "insert into {} values (\{\})".format(self.destination_table)
+        fields = self.fieldmapping_set.all().order_by("id").values_list("destination_field", flat=True)
+        return "insert ({}) into {} values (\{\})".format(fields, self.destination_table)
 
 
 class FieldMapping(models.Model):
@@ -40,7 +46,7 @@ class FieldMapping(models.Model):
     destination_field = models.CharField(max_length=200, verbose_name=ugettext_lazy("Destination Field"))
 
 
-class JobStatus(models):
+class JobStatus(models.Model):
     job = models.ForeignKey(Job, verbose_name=ugettext_lazy("Job"))
     batch_id = models.CharField(max_length=200, verbose_name=ugettext_lazy("Batch Id"))
     status = models.CharField(choices=(("running", "running"), ("completed", "completed"), ("error", "error")), verbose_name=ugettext_lazy("Status"))
@@ -49,7 +55,7 @@ class JobStatus(models):
     error = models.CharField(max_length=4000, null=True, verbose_name=ugettext_lazy("Batch Id"))
 
 
-class TaskStatus(models):
+class TaskStatus(models.Model):
     job = models.ForeignKey(Job, verbose_name=ugettext_lazy("Job"))
     task = models.ForeignKey(Task, verbose_name=ugettext_lazy("Task"))
     batch_id = models.CharField(max_length=200, verbose_name=ugettext_lazy("Batch Id"))

@@ -4,7 +4,9 @@ import mysql.connector
 import pyodbc
 import sqlite3
 
-from etl.models import Job, Database
+from django.utils.timezone import now
+
+from etl.models import Job, Database, JobStatus
 
 
 class Worker:
@@ -12,7 +14,7 @@ class Worker:
     def __init__(self, job:Job):
         self.job = job
 
-    def run(self):
+    def run(self) -> int:
 
         # connect to source
         source_connection = self.connect(self.job.source)
@@ -20,8 +22,19 @@ class Worker:
         # connect to destination
         target_connection = self.connect(self.job.destination)
 
+        # query source batch
+        b_cursor = source_connection.cursor()
+        b_cursor.execute(self.job.source_batch_sql)
+        batch_id = b_cursor.fetchone()[0]
+
+        # return if batch is already being processed otherwise log batch as in progress
+        if JobStatus.objects.filter(job=self.job, batch_id=batch_id).exists():
+            return 0
+        else:
+            JobStatus.objects.create(job=self.job, batch_id=batch_id, started_on=now(), status="running")
+
         # loop through task
-        for task in self.job.task_set.all():
+        for task in self.job.task_set.filter(active=True):
             s_cursor = source_connection.cursor()
             t_cursor = target_connection.cursor()
             # while there are chunks left
@@ -35,7 +48,10 @@ class Worker:
             s_cursor.close()
             t_cursor.close()
 
-        pass
+        # log batch completed
+        JobStatus.objects.filter(job=self.job, batch_id=batch_id, status="running").update(comleted_on=now(), status="completed")
+
+        return 1
 
     def connect(self, db:Database):
         connect_string = json.loads(db.connection_string)
