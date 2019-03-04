@@ -1,3 +1,3 @@
 # django_etl
 
-A simple metadate driven ETL process, supporting multiple independent jobs, table mappings, chunking
+A simple metadata driven ETL process, supporting multiple independent jobs, table mappings, chunking
