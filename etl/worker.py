@@ -40,27 +40,42 @@ class Worker:
             # truncate target if required
             if task.truncate_on_load:
                 tr_cursor = target_connection.cursor()
-                tr_cursor.execute("truncate table {}".format(task.destination_table))
+                if self.job.destination.type == "sqlite":
+                    tr_cursor.execute("delete from {}".format(task.destination_table))
+                else:
+                    tr_cursor.execute("truncate table {}".format(task.destination_table))
                 tr_cursor.close()
-
+            target_connection.commit()
             # while there are chunks left
+            #print(task.extract_query(batch_id=batch_id))
+            #s_cursor.execute("select * from A")
+            #print(s_cursor.fetchall())
             s_cursor.execute(task.extract_query(batch_id=batch_id))
             # select next chunk to memory
             data = s_cursor.fetchmany(size=task.chunk_size) if task.chunk_size > 0 else s_cursor.fetchall()
+            #print(data)
             while data:
                 # write chunk to destination
-                t_cursor.executemany(task.load_query(batch_id=batch_id), data)
+                #print(task.load_query(batch_id=batch_id))
+                #print(data)
+                query = task.load_query(batch_id=batch_id)
+                #print(query)
+                t_cursor.executemany(query, data)
+                target_connection.commit()
                 data = s_cursor.fetchmany(size=task.chunk_size) if task.chunk_size > 0 else None
             s_cursor.close()
             t_cursor.close()
 
         # log batch completed
-        JobStatus.objects.filter(job=self.job, batch_id=batch_id, status="running").update(comleted_on=now(), status="completed")
+        JobStatus.objects.filter(job=self.job, batch_id=batch_id, status="running").update(completed_on=now(), status="completed")
 
         return 1
 
     def connect(self, *, db: Database):
         connect_string = json.loads(db.connection_string)
+        #print(connect_string)
+        #print(db.type)
+
         if db.type == 'mysql':
             return mysql.connector.connect(**connect_string)
         elif db.type == 'mssql':

@@ -35,7 +35,7 @@ class Task(models.Model):
     job = models.ForeignKey(Job, verbose_name=ugettext_lazy("Job"), on_delete=PROTECT)
     source_table = models.CharField(max_length=200, verbose_name=ugettext_lazy("Source Table"))
     destination_table = models.CharField(max_length=200, verbose_name=ugettext_lazy("Destination Table"))
-    filter = models.CharField(max_length=200, verbose_name=ugettext_lazy("Filter"))
+    filter = models.CharField(max_length=200, null=True, verbose_name=ugettext_lazy("Filter"))
     chunk_size = models.IntegerField(verbose_name=ugettext_lazy("Chunk Size"))
     source_batch_column = models.CharField(max_length=200, verbose_name=ugettext_lazy("Source Batch Column"))
     destination_batch_column = models.CharField(max_length=200, verbose_name=ugettext_lazy("Destination Batch Column"))
@@ -44,19 +44,24 @@ class Task(models.Model):
 
     def extract_query(self, *, batch_id: str):
         fields = ", ".join(self.fieldmapping_set.all().order_by("id").values_list("source_field", flat=True))
-        return "select {} from {} where batch_id = {}{}{}".format(
+        return "select {} from {} where {} = '{}'{}{}".format(
             fields,
             self.source_table,
+            self.source_batch_column,
+            batch_id,
             " and " if self.filter else "",
             self.filter if self.filter else "")
 
     def load_query(self, *, batch_id: str):
-        fields = self.fieldmapping_set.all().order_by("id").values_list("destination_field", flat=True)
-        return "insert ({},{}) into {} values ({},\{\})".format(
+        field_list = self.fieldmapping_set.all().order_by("id").values_list("destination_field", flat=True)
+        fields = ", ".join(field_list)
+        return "insert into {} ({},{}) values ({},{})".format(
+            self.destination_table,
             self.destination_batch_column,
             fields,
-            self.destination_table,
-            batch_id)
+            batch_id,
+            ", ".join(["?" for i in range(len(field_list))])
+        )
 
 
 class FieldMapping(models.Model):
