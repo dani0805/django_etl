@@ -6,7 +6,7 @@ import sqlite3
 
 from django.utils.timezone import now
 
-from etl.models import Job, Database, JobStatus
+from etl.models import Job, Database, JobStatus, TaskStatus
 
 
 class Worker:
@@ -35,6 +35,11 @@ class Worker:
 
         # loop through task
         for task in self.job.task_set.filter(active=True):
+            if TaskStatus.objects.filter(job=self.job, task=task, batch_id=batch_id).exists():
+                return 0
+            else:
+                TaskStatus.objects.create(job=self.job, task=task, batch_id=batch_id, started_on=now(), status="running")
+
             s_cursor = source_connection.cursor()
             t_cursor = target_connection.cursor()
             # truncate target if required
@@ -65,6 +70,8 @@ class Worker:
                 data = s_cursor.fetchmany(size=task.chunk_size) if task.chunk_size > 0 else None
             s_cursor.close()
             t_cursor.close()
+            TaskStatus.objects.filter(job=self.job, task=task, batch_id=batch_id, status="running").update(completed_on=now(),
+                status="completed")
 
         # log batch completed
         JobStatus.objects.filter(job=self.job, batch_id=batch_id, status="running").update(completed_on=now(), status="completed")
