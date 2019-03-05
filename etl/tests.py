@@ -26,17 +26,17 @@ class ETLTest(TestCase):
 
         self.s_con = create_connection(self.source_file_name)
         cursor = self.s_con.cursor()
-        cursor.execute("create table A (a_batch varchar(100), S1 varchar(200))")
-        cursor.execute("create table C (a_batch varchar(100), S1 varchar(200))")
+        cursor.execute("create table A (a_batch varchar(100), S1 varchar(200), S3 integer, S2 varchar(200))")
+        cursor.execute("create table C (a_batch varchar(100), S1 varchar(200), S2 varchar(200), S3 integer)")
         for i in range(97):
-            cursor.execute("insert into A (a_batch, S1) values ('1', 'test value {}')".format(i))
-            cursor.execute("insert into C (a_batch, S1) values ('1', 'test value {}')".format(i))
+            cursor.execute("insert into A (a_batch, S1, S2, S3) values ('1', 'test value {}', 'qwe', 123)".format(i))
+            cursor.execute("insert into C (a_batch, S1, S2, S3) values ('1', 'test value {}', 'qwe', 234)".format(i))
         self.s_con.commit()
         cursor.close()
         self.d_con = create_connection(self.dest_file_name)
         dcursor = self.d_con.cursor()
-        dcursor.execute("create table B (b_batch varchar(100), D1 varchar(200))")
-        dcursor.execute("create table D (b_batch varchar(100), D1 varchar(200))")
+        dcursor.execute("create table B (b_batch varchar(100), D3 integer, D2 varchar(200), D1 varchar(200))")
+        dcursor.execute("create table D (b_batch varchar(100), D3 integer, D1 varchar(200), D2 varchar(200))")
         dcursor.close()
         self.s_con.close()
         self.d_con.close()
@@ -55,7 +55,7 @@ class ETLTest(TestCase):
             source=source_db,
             destination=dest_db,
             name="test-job",
-            source_batch_sql="select '1' as dummy"
+            source_batch_sql="select '1' as dummy where '{}' = 'none'"
         )
         task = Task.objects.create(
             job=job,
@@ -68,6 +68,8 @@ class ETLTest(TestCase):
             truncate_on_load=True
         )
         FieldMapping.objects.create(source_field="S1", destination_field="D1", task=task)
+        FieldMapping.objects.create(source_field="S2", destination_field="D2", task=task)
+        FieldMapping.objects.create(source_field="S3", destination_field="D3", task=task)
 
         task2 = Task.objects.create(
             job=job,
@@ -80,6 +82,8 @@ class ETLTest(TestCase):
             truncate_on_load=False
         )
         FieldMapping.objects.create(source_field="S1", destination_field="D1", task=task2)
+        FieldMapping.objects.create(source_field="S2", destination_field="D2", task=task2)
+        FieldMapping.objects.create(source_field="S3", destination_field="D3", task=task2)
 
 
     def tearDown(self):

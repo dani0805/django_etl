@@ -24,7 +24,7 @@ class Worker:
 
         # query source batch
         b_cursor = source_connection.cursor()
-        b_cursor.execute(self.job.source_batch_sql)
+        b_cursor.execute(self.job.next_source_batch_sql)
         batch_id = b_cursor.fetchone()[0]
 
         # return if batch is already being processed otherwise log batch as in progress
