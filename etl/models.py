@@ -20,7 +20,7 @@ class Job(models.Model):
     destination = models.ForeignKey(Database, verbose_name=ugettext_lazy("Destination"),
         related_name="destination_jobs", on_delete=PROTECT)
     active = models.BooleanField(default=True, verbose_name=ugettext_lazy("Active"))
-    source_batch_sql = models.CharField(max_length=4000, unique=True, verbose_name=ugettext_lazy("Source Batch SQL"))
+    source_batch_sql = models.CharField(max_length=4000, verbose_name=ugettext_lazy("Source Batch SQL"))
 
     @property
     def next_source_batch_sql(self):
@@ -29,6 +29,8 @@ class Job(models.Model):
             last_batch = JobStatus.objects.filter(status="completed").order_by("id").first()
             if last_batch is None:
                 last_batch = "none"
+            else:
+                last_batch = last_batch.batch_id
             return self.source_batch_sql.format(*[last_batch for i in range(placeholders)])
         else:
             return self.source_batch_sql
