@@ -25,7 +25,12 @@ class Worker:
         # query source batch
         b_cursor = source_connection.cursor()
         b_cursor.execute(self.job.next_source_batch_sql)
-        batch_id = b_cursor.fetchone()[0]
+        batch_id = b_cursor.fetchone()
+        # return if no such batch is found
+        if batch_id is None:
+            return 0
+        else:
+            batch_id = batch_id[0]
 
         # return if batch is already being processed otherwise log batch as in progress
         if JobStatus.objects.filter(job=self.job, batch_id=batch_id).exists():

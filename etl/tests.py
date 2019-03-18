@@ -55,7 +55,7 @@ class ETLTest(TestCase):
             source=source_db,
             destination=dest_db,
             name="test-job",
-            source_batch_sql="select '1' as dummy where '{}' = 'none'"
+            source_batch_sql="select '1' as dummy where '{}' < '1' or '{}' = 'none'"
         )
         task = Task.objects.create(
             job=job,
@@ -101,7 +101,8 @@ class ETLTest(TestCase):
 
     def test_job(self):
         worker = Worker(job=Job.objects.get(name="test-job"))
-        worker.run()
+        result = worker.run()
+        self.assertEqual(result, 1)
         self.d_con = create_connection(self.dest_file_name)
         c = self.d_con.cursor()
         c.execute("select count(1) from B")
@@ -114,5 +115,7 @@ class ETLTest(TestCase):
         data = c.fetchone()
         self.assertEqual(data[1], 'qwe')
         self.assertEqual(data[2], 234)
+        result = worker.run()
+        self.assertEqual(result, 0)
         c.close()
         self.d_con.close()
