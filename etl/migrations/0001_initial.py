@@ -35,7 +35,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('name', models.CharField(max_length=200, unique=True, verbose_name='Name')),
                 ('active', models.BooleanField(default=True, verbose_name='Active')),
-                ('source_batch_sql', models.CharField(max_length=4000, unique=True, verbose_name='Source Batch SQL')),
+                ('source_batch_sql', models.CharField(max_length=4000, verbose_name='Source Batch SQL')),
                 ('destination', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='destination_jobs', to='etl.Database', verbose_name='Destination')),
                 ('source', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='source_job', to='etl.Database', verbose_name='Source')),
             ],
