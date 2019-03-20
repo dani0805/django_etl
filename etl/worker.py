@@ -33,13 +33,14 @@ class Worker:
 
         # connect to destination
         target_connection = self.connect(db=self.job.destination)
+        # query source batch
+        b_cursor = source_connection.cursor()
+        b_cursor.execute(self.job.next_source_batch_sql)
+        batch_id = b_cursor.fetchone()
+
         try:
-            # query source batch
-            b_cursor = source_connection.cursor()
-            b_cursor.execute(self.job.next_source_batch_sql)
-            batch_id = b_cursor.fetchone()
             # return if no such batch is found
-            if batch_id is None:
+            if batch_id is None or len(batch_id) == 0:
                 return 0
             else:
                 batch_id = batch_id[0]
@@ -55,8 +56,15 @@ class Worker:
                 self.run_task(task=task, target_connection=target_connection, source_connection=source_connection, batch_id=batch_id)
 
             # log batch completed
-            JobStatus.objects.filter(job=self.job, batch_id=batch_id, status="running").update(completed_on=now(), status="completed")
-        except:
+            JobStatus.objects.filter(job=self.job, batch_id=batch_id, status="running").update(completed_on=now(),
+                status="completed")
+
+        except Exception as e:
+            JobStatus.objects.filter(job=self.job, batch_id=batch_id, status="running").update(
+                error="Error executing Job: {}\n{}".format(e, sys.exc_info()[2]),
+                completed_on=now(),
+                status="completed")
+
             raise
         finally:
             source_connection.close()
@@ -94,15 +102,20 @@ class Worker:
                 target_connection.commit()
                 # select next chunk to memory
                 data = s_cursor.fetchmany(task.chunk_size) if task.chunk_size > 0 else None
-        except:
+                TaskStatus.objects.filter(job=self.job, task=task, batch_id=batch_id, status="running").update(
+                    completed_on=now(),
+                    status="completed")
+        except Exception as e:
+            TaskStatus.objects.filter(job=self.job, task=task, batch_id=batch_id, status="running").update(
+                error = "Error executing Task: {}\n{}".format(e, sys.exc_info()[2]),
+                completed_on=now(),
+                status="error")
             raise
         finally:
             s_cursor.close()
             t_cursor.close()
             # log target end
-            TaskStatus.objects.filter(job=self.job, task=task, batch_id=batch_id, status="running").update(
-                completed_on=now(),
-                status="completed")
+
 
 
     def truncate_target_table(self, *, target_connection, task):
