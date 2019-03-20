@@ -87,6 +87,8 @@ class Worker:
             s_cursor.execute(task.extract_query(batch_id=batch_id))
             # select next chunk to memory
             data = s_cursor.fetchmany(task.chunk_size) if task.chunk_size > 0 else s_cursor.fetchall()
+            if data is None:
+                raise Exception("No data found")
             # while there are chunks left
             while data:
                 # write chunk to destination
@@ -102,6 +104,7 @@ class Worker:
                 target_connection.commit()
                 # select next chunk to memory
                 data = s_cursor.fetchmany(task.chunk_size) if task.chunk_size > 0 else None
+                # log target end
                 TaskStatus.objects.filter(job=self.job, task=task, batch_id=batch_id, status="running").update(
                     completed_on=now(),
                     status="completed")
@@ -114,7 +117,7 @@ class Worker:
         finally:
             s_cursor.close()
             t_cursor.close()
-            # log target end
+
 
 
 
