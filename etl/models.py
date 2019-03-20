@@ -61,7 +61,7 @@ class Task(models.Model):
     def load_query(self, *, batch_id: str):
         field_list = self.fieldmapping_set.all().order_by("id").values_list("destination_field", flat=True)
         fields = ", ".join(field_list)
-        return "insert into {} ({},{}) values ({},{})".format(
+        return "insert into {} ({},{}) values ('{}',{})".format(
             self.destination_table,
             self.destination_batch_column,
             fields,
