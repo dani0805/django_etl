@@ -1,8 +1,18 @@
 import json
 
-import mysql.connector
-import pyodbc
-import sqlite3
+try:
+    import MySQLdb as mysql
+except:
+    print("No mysql driver found ... ")
+try:
+    import pyodbc
+except:
+    print("No odbc driver found ... ")
+try:
+    import sqlite3
+except:
+    print("No sqlite driver found ... ")
+
 
 from django.utils.timezone import now
 
@@ -93,7 +103,7 @@ class Worker:
         #print(db.type)
 
         if db.type == 'mysql':
-            return mysql.connector.connect(**connect_string)
+            return mysql.connect(**connect_string)
         elif db.type == 'mssql':
             return pyodbc.connect(**connect_string)
         elif db.type == 'sqlite':
