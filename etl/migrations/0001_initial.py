@@ -16,7 +16,7 @@ class Migration(migrations.Migration):
             name='Database',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=200, unique=True, verbose_name='Name')),
+                ('name', models.CharField(max_length=100, unique=True, verbose_name='Name')),
                 ('connection_string', models.CharField(max_length=2000, verbose_name='Connection String')),
                 ('type', models.CharField(choices=[('mssql', 'mssql'), ('mysql', 'mysql'), ('sqlite', 'sqlite')], max_length=200, verbose_name='Database Type')),
             ],
@@ -33,7 +33,7 @@ class Migration(migrations.Migration):
             name='Job',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=200, unique=True, verbose_name='Name')),
+                ('name', models.CharField(max_length=100, unique=True, verbose_name='Name')),
                 ('active', models.BooleanField(default=True, verbose_name='Active')),
                 ('source_batch_sql', models.CharField(max_length=4000, verbose_name='Source Batch SQL')),
                 ('destination', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='destination_jobs', to='etl.Database', verbose_name='Destination')),

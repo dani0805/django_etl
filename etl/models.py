@@ -7,14 +7,14 @@ from django.utils.translation import ugettext_lazy
 
 
 class Database(models.Model):
-    name = models.CharField(max_length=200, unique=True, verbose_name=ugettext_lazy("Name"))
+    name = models.CharField(max_length=100, unique=True, verbose_name=ugettext_lazy("Name"))
     connection_string = models.CharField(max_length=2000, verbose_name=ugettext_lazy("Connection String"))
     type = models.CharField(max_length=200, choices=(("mssql", "mssql"), ("mysql", "mysql"), ("sqlite", "sqlite")),
         verbose_name=ugettext_lazy("Database Type"))
 
 
 class Job(models.Model):
-    name = models.CharField(max_length=200, unique=True, verbose_name=ugettext_lazy("Name"))
+    name = models.CharField(max_length=100, unique=True, verbose_name=ugettext_lazy("Name"))
     source = models.ForeignKey(Database, verbose_name=ugettext_lazy("Source"), related_name="source_job",
         on_delete=PROTECT)
     destination = models.ForeignKey(Database, verbose_name=ugettext_lazy("Destination"),
