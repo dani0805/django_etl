@@ -1,5 +1,7 @@
 import json
 
+import sys
+
 try:
     import MySQLdb as mysql
 except:
@@ -31,30 +33,34 @@ class Worker:
 
         # connect to destination
         target_connection = self.connect(db=self.job.destination)
+        try:
+            # query source batch
+            b_cursor = source_connection.cursor()
+            b_cursor.execute(self.job.next_source_batch_sql)
+            batch_id = b_cursor.fetchone()
+            # return if no such batch is found
+            if batch_id is None:
+                return 0
+            else:
+                batch_id = batch_id[0]
 
-        # query source batch
-        b_cursor = source_connection.cursor()
-        b_cursor.execute(self.job.next_source_batch_sql)
-        batch_id = b_cursor.fetchone()
-        # return if no such batch is found
-        if batch_id is None:
-            return 0
-        else:
-            batch_id = batch_id[0]
+            # return if batch is already being processed otherwise log batch as in progress
+            if JobStatus.objects.filter(job=self.job, batch_id=batch_id).exists():
+                return 0
+            else:
+                JobStatus.objects.create(job=self.job, batch_id=batch_id, started_on=now(), status="running")
 
-        # return if batch is already being processed otherwise log batch as in progress
-        if JobStatus.objects.filter(job=self.job, batch_id=batch_id).exists():
-            return 0
-        else:
-            JobStatus.objects.create(job=self.job, batch_id=batch_id, started_on=now(), status="running")
+            # loop through task
+            for task in self.job.task_set.filter(active=True):
+                self.run_task(task=task, target_connection=target_connection, source_connection=source_connection, batch_id=batch_id)
 
-        # loop through task
-        for task in self.job.task_set.filter(active=True):
-            self.run_task(task=task, target_connection=target_connection, source_connection=source_connection, batch_id=batch_id)
-
-        # log batch completed
-        JobStatus.objects.filter(job=self.job, batch_id=batch_id, status="running").update(completed_on=now(), status="completed")
-
+            # log batch completed
+            JobStatus.objects.filter(job=self.job, batch_id=batch_id, status="running").update(completed_on=now(), status="completed")
+        except:
+            raise
+        finally:
+            source_connection.close()
+            target_connection.close()
         return 1
 
     def run_task(self, *, task: Task, source_connection, target_connection, batch_id: str):
@@ -66,26 +72,37 @@ class Worker:
 
         s_cursor = source_connection.cursor()
         t_cursor = target_connection.cursor()
-        # truncate target if required
-        self.truncate_target_table(target_connection=target_connection, task=task)
-        target_connection.commit()
-        s_cursor.execute(task.extract_query(batch_id=batch_id))
-        # select next chunk to memory
-        data = s_cursor.fetchmany(task.chunk_size) if task.chunk_size > 0 else s_cursor.fetchall()
-        # while there are chunks left
-        while data:
-            # write chunk to destination
-            query = task.load_query(batch_id=batch_id)
-            t_cursor.executemany(query, data)
+        try:
+            # truncate target if required
+            self.truncate_target_table(target_connection=target_connection, task=task)
             target_connection.commit()
+            s_cursor.execute(task.extract_query(batch_id=batch_id))
             # select next chunk to memory
-            data = s_cursor.fetchmany(task.chunk_size) if task.chunk_size > 0 else None
-        s_cursor.close()
-        t_cursor.close()
-        # log target end
-        TaskStatus.objects.filter(job=self.job, task=task, batch_id=batch_id, status="running").update(
-            completed_on=now(),
-            status="completed")
+            data = s_cursor.fetchmany(task.chunk_size) if task.chunk_size > 0 else s_cursor.fetchall()
+            # while there are chunks left
+            while data:
+                # write chunk to destination
+                query = task.load_query(batch_id=batch_id)
+                try:
+                    t_cursor.executemany(query, data)
+                except Exception as err:
+                    raise SystemError(
+                        "could not insert data with query \n{} \nand data \n{}\n This error was caused by \n{}\n{}".format(
+                            query, data, err, sys.exc_info()[2]
+                        )
+                    )
+                target_connection.commit()
+                # select next chunk to memory
+                data = s_cursor.fetchmany(task.chunk_size) if task.chunk_size > 0 else None
+        except:
+            raise
+        finally:
+            s_cursor.close()
+            t_cursor.close()
+            # log target end
+            TaskStatus.objects.filter(job=self.job, task=task, batch_id=batch_id, status="running").update(
+                completed_on=now(),
+                status="completed")
 
 
     def truncate_target_table(self, *, target_connection, task):
