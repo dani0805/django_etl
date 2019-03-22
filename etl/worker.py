@@ -40,7 +40,7 @@ class Worker:
 
         try:
             # return if no such batch is found
-            if batch_id is None or len(batch_id) == 0:
+            if batch_id is None or len(batch_id) == 0 or batch_id[0] is None:
                 return 0
             else:
                 batch_id = batch_id[0]
