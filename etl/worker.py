@@ -98,12 +98,16 @@ class Worker:
             while data:
                 # write chunk to destination
                 query = task.load_query(batch_id=batch_id)
+                last_bracket = query.rfind("(")
+                values_template = str(query[last_bracket:])
+                values = ", ".join([values_template.format(*row) for row in data])
+                query = str(query[:last_bracket]) + values
                 try:
-                    t_cursor.executemany(query, data)
+                    t_cursor.execute(query)
                 except Exception as err:
                     raise SystemError(
-                        "could not insert data with query \n{} \nand data \n{}\n This error was caused by \n{}\n{}".format(
-                            query, data, err, sys.exc_info()[2]
+                        "could not insert data with query \n{}\n This error was caused by \n{}\n{}".format(
+                            query, err, sys.exc_info()[2]
                         )
                     )
                 target_connection.commit()

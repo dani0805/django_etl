@@ -66,7 +66,7 @@ class Task(models.Model):
             self.destination_batch_column,
             fields,
             batch_id,
-            ", ".join(["?" if self.job.destination.type == "sqlite" else "%s" for i in range(len(field_list))])
+            ", ".join(["'{}'" for i in range(len(field_list))])
         )
 
 
