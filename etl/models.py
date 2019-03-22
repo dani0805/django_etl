@@ -26,7 +26,7 @@ class Job(models.Model):
     def next_source_batch_sql(self):
         placeholders = self.source_batch_sql.count("{}")
         if placeholders > 0:
-            last_batch = JobStatus.objects.filter(status="completed").order_by("id").first()
+            last_batch = JobStatus.objects.filter(status="completed", job=self).order_by("id").first()
             if last_batch is None:
                 last_batch = "none"
             else:
