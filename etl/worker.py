@@ -49,7 +49,14 @@ class Worker:
             if JobStatus.objects.filter(job=self.job, batch_id=batch_id).exists():
                 return 0
             else:
-                JobStatus.objects.create(job=self.job, batch_id=batch_id, started_on=now(), status="running")
+                try:
+                    JobStatus.objects.create(job=self.job, batch_id=batch_id, started_on=now(), status="running")
+                except Exception as ce:
+                    raise SystemError(
+                        "Could not create job status log for batch id \n{} \nand job \n{}\n This error was caused by \n{}\n{}".format(
+                            batch_id, self.job, ce, sys.exc_info()[2]
+                        )
+                    )
 
             # loop through task
             for task in self.job.task_set.filter(active=True):
