@@ -61,9 +61,9 @@ class Worker:
 
         except Exception as e:
             JobStatus.objects.filter(job=self.job, batch_id=batch_id, status="running").update(
-                error="Error executing Job: {}\n{}".format(e, sys.exc_info()[2]),
+                error="Error executing Job: {}\n{}".format(e, sys.exc_info()[2])[:3998],
                 completed_on=now(),
-                status="completed")
+                status="error")
 
             raise
         finally:
@@ -108,7 +108,7 @@ class Worker:
                 status="completed")
         except Exception as e:
             TaskStatus.objects.filter(job=self.job, task=task, batch_id=batch_id, status="running").update(
-                error = "Error executing Task: {}\n{}".format(e, sys.exc_info()[2]),
+                error="Error executing Task: {}\n{}".format(e, sys.exc_info()[2])[:3998],
                 completed_on=now(),
                 status="error")
             raise
