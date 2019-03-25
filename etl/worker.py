@@ -101,7 +101,10 @@ class Worker:
                 last_bracket = query.rfind("(")
                 values_template = str(query[last_bracket:])
                 values = ", ".join([values_template.format(*[
-                    a.replace("'", "''") if isinstance(a, str) else a for a in row
+                    "'" + a.replace("'", "''") + "'" if isinstance(a, str)
+                    else 'NULL' if a is None
+                    else "'{}'".format(a)
+                    for a in row
                 ]) for row in data])
                 query = str(query[:last_bracket]) + values
                 try:
