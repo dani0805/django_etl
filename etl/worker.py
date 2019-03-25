@@ -100,7 +100,9 @@ class Worker:
                 query = task.load_query(batch_id=batch_id)
                 last_bracket = query.rfind("(")
                 values_template = str(query[last_bracket:])
-                values = ", ".join([values_template.format(*row) for row in data])
+                values = ", ".join([values_template.format(*[
+                    a.replace("'", "''") if isinstance(a, str) else a for a in row
+                ]) for row in data])
                 query = str(query[:last_bracket]) + values
                 try:
                     t_cursor.execute(query)
