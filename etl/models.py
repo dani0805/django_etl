@@ -13,6 +13,10 @@ class Database(models.Model):
         verbose_name=ugettext_lazy("Database Type"))
 
 
+class SharedLoadId(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+
 class Job(models.Model):
     name = models.CharField(max_length=100, unique=True, verbose_name=ugettext_lazy("Name"))
     source = models.ForeignKey(Database, verbose_name=ugettext_lazy("Source"), related_name="source_job",
@@ -21,7 +25,8 @@ class Job(models.Model):
         related_name="destination_jobs", on_delete=PROTECT)
     active = models.BooleanField(default=True, verbose_name=ugettext_lazy("Active"))
     source_batch_sql = models.CharField(max_length=4000, verbose_name=ugettext_lazy("Source Batch SQL"))
-    shares_loadid_with = models.ManyToManyField('Job')
+    shares_loadid = models.ForeignKey(SharedLoadId, on_delete=PROTECT, related_name="sharing_jobs", null=True, blank=True)
+    full_import = models.BooleanField(default=True, verbose_name=ugettext_lazy("Active"))
 
     @property
     def next_source_batch_sql(self):
