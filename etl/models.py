@@ -55,13 +55,21 @@ class Task(models.Model):
 
     def extract_query(self, *, batch_id: str):
         fields = ", ".join(self.fieldmapping_set.all().order_by("id").values_list("source_field", flat=True))
-        return "select {} from {} where {} = '{}'{}{}".format(
-            fields,
-            self.source_table,
-            self.source_batch_column,
-            batch_id,
-            " and " if self.filter else "",
-            self.filter if self.filter else "")
+
+        if self.job.full_import:
+            return "select {} from {}{}{}".format(
+                fields,
+                self.source_table,
+                " where " if self.filter else "",
+                self.filter if self.filter else "")
+        else:
+            return "select {} from {} where {} = '{}'{}{}".format(
+                fields,
+                self.source_table,
+                self.source_batch_column,
+                batch_id,
+                " and " if self.filter else "",
+                self.filter if self.filter else "")
 
     def load_query(self, *, batch_id: str):
         field_list = self.fieldmapping_set.all().order_by("id").values_list("destination_field", flat=True)

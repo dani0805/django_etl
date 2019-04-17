@@ -133,8 +133,6 @@ class Worker:
             t_cursor.close()
 
 
-
-
     def truncate_target_table(self, *, target_connection, task):
         if task.truncate_on_load:
             tr_cursor = target_connection.cursor()
@@ -143,6 +141,7 @@ class Worker:
             else:
                 tr_cursor.execute("truncate table {}".format(task.destination_table))
             tr_cursor.close()
+
 
     def connect(self, *, db: Database):
         connect_string = json.loads(db.connection_string)
