@@ -21,6 +21,7 @@ class Job(models.Model):
         related_name="destination_jobs", on_delete=PROTECT)
     active = models.BooleanField(default=True, verbose_name=ugettext_lazy("Active"))
     source_batch_sql = models.CharField(max_length=4000, verbose_name=ugettext_lazy("Source Batch SQL"))
+    shares_loadid_with = models.ManyToManyField('Job')
 
     @property
     def next_source_batch_sql(self):
@@ -34,7 +35,6 @@ class Job(models.Model):
             return self.source_batch_sql.format(*[last_batch for i in range(placeholders)])
         else:
             return self.source_batch_sql
-
 
 
 class Task(models.Model):
